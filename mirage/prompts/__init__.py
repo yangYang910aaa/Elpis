@@ -1,7 +1,7 @@
 """提示词管理模块
 
 集中管理 Agent 的系统提示词、技能提示词、输出模板等。
-所有提示词统一使用 Markdown 格式（.md），放在本目录下。
+所有提示词统一使用 Markdown 格式(.md)，放在本目录下。
 通过 load_prompt(name) 按文件名加载，支持子目录。
 
 目录结构示例：
@@ -35,7 +35,6 @@ def _scan_prompts() -> dict[str, str]:
         prompts[name] = md_file.read_text(encoding="utf-8")
 
     return prompts
-
 
 def load_prompt(name: str) -> str:
     """加载指定名称的提示词

@@ -1,14 +1,14 @@
-"""Agent 核心：基于 LangChain create_agent 的标准实现
+"""Agent 核心：基于 LangChain create_agent 的流式实现（最简版）
 
-使用 LangChain 标准组件：
-- ChatOpenAI: LLM 封装
-- @tool 装饰器: 工具定义
-- create_agent: LangChain 官方推荐的 Agent 构建函数（运行在 LangGraph 之上）
+用 astream 多模式（messages + values）实现流式：
+- messages 流：逐 token 输出 LLM 文本
+- values 流：每步更新完整 state，最后一步即最终结果
 """
 
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import AIMessage, ToolMessage, HumanMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, ToolMessage, HumanMessage
 from langchain.agents import create_agent
+from langgraph.errors import GraphRecursionError
 from mirage.config import settings
 from mirage.tools import ALL_TOOLS
 from mirage.prompts import load_system_prompt
@@ -20,6 +20,7 @@ def _build_llm() -> ChatOpenAI:
         "model": settings.openai_model,
         "api_key": settings.openai_api_key,
         "temperature": settings.openai_temperature,
+        "streaming": True,   # 流式模式
     }
     if settings.openai_base_url:
         kwargs["base_url"] = settings.openai_base_url
@@ -36,7 +37,6 @@ def _build_agent():
 def _extract_tool_calls(messages: list) -> list[dict]:
     """从消息历史中提取所有工具调用记录（含输入和输出）"""
     tool_calls = []
-    # 建立 tool_call_id -> ToolMessage 的映射
     tool_results = {}
     for msg in messages:
         if isinstance(msg, ToolMessage):
@@ -55,43 +55,72 @@ def _extract_tool_calls(messages: list) -> list[dict]:
     return tool_calls
 
 
-def run_agent(user_input: str) -> dict:
-    """运行 Agent: 处理用户输入，返回最终结果
+def _prepare_messages(user_input: str, history: list | None = None, max_history: int = 30) -> list:
+    """拼接历史消息与新的用户输入，并做滑动窗口裁剪（按条数）"""
+    messages = list(history) if history else []
+    if len(messages) > max_history:
+        start = 0
+        for idx in range(len(messages) - 1, -1, -1):
+            if isinstance(messages[idx], HumanMessage) and len(messages) - idx <= max_history:
+                start = idx
+                break
+        messages = messages[start:]
+    messages.append(HumanMessage(content=user_input))
+    return messages
 
-    Returns:
-        {
-            "response": str,           # AI 最终文本回复
-            "tool_calls": list,        # 所有工具调用记录
-            "iterations": int,         # 实际迭代次数（LLM 调用轮数）
-            "messages": list,          # 完整消息历史
-        }
+
+async def run_agent_stream(user_input: str, history: list | None = None):
+    """流式运行 Agent。
+
+    事件类型：
+        {"type": "token", "content": "..."}    # LLM 输出的一个 token
+        {"type": "done",  "response": "...",    # 结束，返回完整结果
+         "tool_calls": [...], "iterations": N, "messages": [...]}
+        {"type": "error", "message": "..."}     # 异常中断
     """
     agent = _build_agent()
-
-    # recursion_limit 限制最大递归步数，防止无限循环
-    # 每轮 Agent 迭代约消耗 2 步（LLM + Tool），所以乘以 2 再加余量
     config = {"recursion_limit": settings.max_agent_iterations * 2 + 5}
+    messages = _prepare_messages(user_input, history)
 
-    result = agent.invoke(
-        {"messages":[HumanMessage(content=user_input)]},
-        config=config,
-    )
+    final_state = None
 
-    messages = result["messages"]
+    try:
+        async for mode, payload in agent.astream(
+            {"messages": messages},
+            config=config,
+            stream_mode=["messages", "values"],   # messages 逐 token，values 给完整 state
+        ):
+            if mode == "messages":
+                chunk, _ = payload
+                if isinstance(chunk, AIMessageChunk) and chunk.content:
+                    yield {"type": "token", "content": str(chunk.content)}
+            elif mode == "values":
+                final_state = payload                # 每步都更新，最后一步即最终 state
+    except GraphRecursionError:
+        yield {"type": "error", "message": f"达到最大迭代次数（{settings.max_agent_iterations}），任务未完成。"}
+        return
+    except Exception as e:
+        yield {"type": "error", "message": f"发生未知错误：{e}"}
+        return
 
-    # 提取最终回复：最后一个 AIMessage 的文本内容
+    # 防御：极端情况下 values 流没 yield 过
+    if final_state is None:
+        yield {"type": "error", "message": "Agent 执行结束但未获得最终状态。"}
+        return
+
+    msgs = final_state["messages"]                  # 完整、正确的消息历史
+
+    # 最终回复：取最后一条有内容的 AIMessage（与原版逻辑一致）
     response_text = ""
-    for msg in reversed(messages):
+    for msg in reversed(msgs):
         if isinstance(msg, AIMessage) and msg.content:
-            response_text = msg.content
+            response_text = str(msg.content)
             break
 
-    # 统计迭代次数：AIMessage 的数量（每轮 LLM 调用一个 AIMessage）
-    iterations = sum(1 for msg in messages if isinstance(msg, AIMessage))
-
-    return {
+    yield {
+        "type": "done",
         "response": response_text,
-        "tool_calls": _extract_tool_calls(messages),
-        "iterations": iterations,
-        "messages": messages,
+        "tool_calls": _extract_tool_calls(msgs),
+        "iterations": sum(1 for m in msgs if isinstance(m, AIMessage)),
+        "messages": msgs,
     }
