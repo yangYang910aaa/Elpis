@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from langchain_core.tools import tool
-from mirage.config import settings
+from elpis.config import settings
 
 
 def _resolve_path(file_path: str) -> Path:

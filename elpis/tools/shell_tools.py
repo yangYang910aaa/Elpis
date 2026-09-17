@@ -2,7 +2,7 @@
 
 import subprocess
 from langchain_core.tools import tool
-from mirage.config import settings
+from elpis.config import settings
 
 
 @tool

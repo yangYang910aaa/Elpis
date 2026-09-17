@@ -1,5 +1,5 @@
 [project]
-name = "mirage"
+name = "elpis"
 version = "0.1.0"
 description = "A personal AI agent that can get things done"
 requires-python = ">=3.11"
@@ -27,14 +27,14 @@ dev = [
 ]
 
 [project.scripts]
-mirage = "mirage.cli:main"
+elpis = "elpis.cli:main"
 
 [build-system]
 requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["mirage*"]
+include = ["elpis*"]
 
 [tool.setuptools.package-data]
-mirage = ["prompts/*.md", "prompts/**/*.md"]
+elpis = ["prompts/*.md", "prompts/**/*.md"]

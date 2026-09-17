@@ -1,8 +1,8 @@
-# Mirage
+# Elpis
 
 一个能自己动手干活的个人 AI Agent。基于 LangChain + LangGraph，支持 OpenAI 兼容 API（可接硅基流动等第三方端点），内置文件操作、Shell 命令执行等工具。
 
-> 海市蜃楼——虚幻却美丽，像 AI 生成的世界，远看是真实的绿洲，走近才发现是光的折射，但那一刻的震撼和向往是真的。
+> Elpis（Ἐλπίς）——希腊神话中"希望"的化身。潘多拉打开魔盒，世间苦难尽数飞出，唯有希望留在盒底。荒芜是常态，但希望从不缺席。
 
 ## 功能特性
 
@@ -45,21 +45,21 @@ pip install -e .
 
 ```bash
 # 方式一：全局命令（安装后可用，推荐）
-mirage
+elpis
 
 # 方式二：直接运行启动脚本
 python main.py
 
 # 方式三：直接运行模块
-python -m mirage.cli
+python -m elpis.cli
 ```
 
 ## 项目结构
 
 ```
-mirage/
+elpis/
 ├── .venv/                  # 虚拟环境（不提交 Git）
-├── mirage/
+├── elpis/
 │   ├── __init__.py
 │   ├── config.py           # 配置管理（Pydantic v2）
 │   ├── agent.py            # Agent 核心逻辑（LangChain create_agent）
@@ -94,10 +94,10 @@ mirage/
 
 ## 扩展新工具
 
-在 `mirage/tools/` 下新建文件，用 `@tool` 装饰器定义函数，然后在 `tools/__init__.py` 的 `ALL_TOOLS` 列表中注册即可：
+在 `elpis/tools/` 下新建文件，用 `@tool` 装饰器定义函数，然后在 `tools/__init__.py` 的 `ALL_TOOLS` 列表中注册即可：
 
 ```python
-# mirage/tools/my_tool.py
+# elpis/tools/my_tool.py
 from langchain_core.tools import tool
 
 @tool
@@ -115,8 +115,8 @@ def my_tool(param: str) -> str:
 ```
 
 ```python
-# mirage/tools/__init__.py
-from mirage.tools.my_tool import my_tool
+# elpis/tools/__init__.py
+from elpis.tools.my_tool import my_tool
 
 ALL_TOOLS = [read_file, write_file, list_directory, run_shell_command, my_tool]
 ```
@@ -137,7 +137,7 @@ ALL_TOOLS = [read_file, write_file, list_directory, run_shell_command, my_tool]
 ```env
 LANGCHAIN_TRACING_V2=true
 LANGCHAIN_API_KEY=your_api_key
-LANGCHAIN_PROJECT=mirage
+LANGCHAIN_PROJECT=elpis
 ```
 
 ## 安全说明

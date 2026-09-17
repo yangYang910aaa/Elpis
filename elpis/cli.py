@@ -1,4 +1,4 @@
-"""命令行入口：终端交互式 Agent（流式版）"""
+"""命令行入口：终端交互式 Agent"""
 
 import asyncio
 from rich.console import Console
@@ -9,9 +9,9 @@ from prompt_toolkit import HTML, PromptSession
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.styles import Style
 
-from mirage.config import settings
-from mirage.agent import run_agent_stream
-from mirage.tools import ALL_TOOLS
+from elpis.config import settings
+from elpis.agent import run_agent_stream
+from elpis.tools import ALL_TOOLS
 
 console = Console()
 
@@ -39,17 +39,16 @@ class SlashCompleter(Completer):
 
 # ============= 展示相关 =============
 def print_banner():
-    """打印欢迎横幅"""
+    """打印欢迎横幅（简洁文字版）"""
     banner = Text()
-    banner.append("🔮 Mirage\n", style="bold cyan")
+    banner.append("你好！我是✨ Elpis，有什么可以帮您？\n", style="bold cyan")
     banner.append(f"工作目录: {settings.workspace_path}\n", style="dim")
     banner.append(f"模型: {settings.openai_model}\n", style="dim")
-    banner.append("输入 /help 查看命令,输入 /exit 退出程序\n", style="dim")
+    banner.append("输入 /help 查看命令，输入 /exit 退出程序", style="dim")
     console.print(Panel(banner, border_style="cyan"))
 
-
 def print_tool_call(call: dict, index: int):
-    """打印工具调用信息"""
+    """模型调用了工具之后,打印工具调用信息"""
     name = call.get("name", "unknown")
     tool_input = call.get("input", {})
 

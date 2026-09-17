@@ -9,9 +9,9 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, AIMessageChunk, ToolMessage, HumanMessage
 from langchain.agents import create_agent
 from langgraph.errors import GraphRecursionError
-from mirage.config import settings
-from mirage.tools import ALL_TOOLS
-from mirage.prompts import load_system_prompt
+from elpis.config import settings
+from elpis.tools import ALL_TOOLS
+from elpis.prompts import load_system_prompt
 
 
 def _build_llm() -> ChatOpenAI:
