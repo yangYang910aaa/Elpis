@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     max_agent_iterations: int = 20
     agent_workspace: str = ""
 
+    # ===== MCP（外部 MCP 服务器配置见 elpis/mcp/servers.yaml）=====
+    # 麦当劳 MCP Token（https://open.mcd.cn 登录后于控制台申请）
+    mcd_mcp_token: str = ""
+
     # ===== 安全 =====
     require_confirmation_for_shell: bool = True
     shell_blacklist: str = "rm -rf /,format,mkfs,dd if="

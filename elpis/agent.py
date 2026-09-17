@@ -27,11 +27,14 @@ def _build_llm() -> ChatOpenAI:
     return ChatOpenAI(**kwargs)
 
 
-def _build_agent():
-    """构建 Agent: LLM + 工具 + 系统提示词，自动循环调用直到完成"""
+async def _build_agent():
+    """构建 Agent: LLM + 工具（内建 + MCP） + 系统提示词，自动循环调用直到完成"""
     llm = _build_llm()
     system_prompt = load_system_prompt()
-    return create_agent(llm, tools=ALL_TOOLS, system_prompt=system_prompt)
+    # MCP 工具：加载失败会降级为空列表，不影响 Agent 启动
+    from elpis.mcp import load_mcp_tools
+    mcp_tools = await load_mcp_tools()
+    return create_agent(llm, tools=ALL_TOOLS + mcp_tools, system_prompt=system_prompt)
 
 
 def _extract_tool_calls(messages: list) -> list[dict]:
@@ -78,7 +81,7 @@ async def run_agent_stream(user_input: str, history: list | None = None):
          "tool_calls": [...], "iterations": N, "messages": [...]}
         {"type": "error", "message": "..."}     # 异常中断
     """
-    agent = _build_agent()
+    agent = await _build_agent()
     config = {"recursion_limit": settings.max_agent_iterations * 2 + 5}
     messages = _prepare_messages(user_input, history)
 

@@ -38,12 +38,18 @@ class SlashCompleter(Completer):
 
 
 # ============= 展示相关 =============
-def print_banner():
+def print_banner(mcp_tools: list = None, mcp_error: str = ""):
     """打印欢迎横幅（简洁文字版）"""
     banner = Text()
     banner.append("你好！我是✨ Elpis，有什么可以帮您？\n", style="bold cyan")
     banner.append(f"工作目录: {settings.workspace_path}\n", style="dim")
     banner.append(f"模型: {settings.openai_model}\n", style="dim")
+    if mcp_tools:
+        banner.append(f"MCP: {len(mcp_tools)} 个外部工具已加载\n", style="dim")
+    elif mcp_error:
+        banner.append(f"MCP: 加载失败 - {mcp_error}\n", style="dim red")
+    else:
+        banner.append("MCP: 未配置外部服务器\n", style="dim")
     banner.append("输入 /help 查看命令，输入 /exit 退出程序", style="dim")
     console.print(Panel(banner, border_style="cyan"))
 
@@ -73,7 +79,7 @@ def print_tool_call(call: dict, index: int):
 
 
 # ============= 命令处理 =============
-def handle_command(user_input: str, history: list):
+def handle_command(user_input: str, history: list, mcp_tools: list = None):
     """执行斜杠命令。返回(history, should_exit)"""
     parts = user_input.split(maxsplit=1)
     name = parts[0]
@@ -103,10 +109,15 @@ def handle_command(user_input: str, history: list):
             return history, False
 
     if name == "/tools":
-        console.print(Text("----可用工具----"), style="bold cyan")
+        console.print(Text("----内建工具----"), style="bold cyan")
         for tool in ALL_TOOLS:
             desc = (tool.description or "").strip().splitlines()[0]
             console.print(f" [bold green]{tool.name}[/bold green]  [dim]{desc[:40]}[/dim]")
+        if mcp_tools:
+            console.print(Text("----MCP 工具----"), style="bold cyan")
+            for tool in mcp_tools:
+                desc = (tool.description or "").strip().splitlines()[0]
+                console.print(f" [bold green]{tool.name}[/bold green]  [dim]{desc[:40]}[/dim]")
         return history, False
 
     return history, False
@@ -114,7 +125,10 @@ def handle_command(user_input: str, history: list):
 
 async def chat_loop():
     """主对话循环（异步流式版）"""
-    print_banner()
+    # 启动时加载 MCP 工具（失败降级为空列表，不影响 Agent 启动）
+    from elpis.mcp import load_mcp_tools, get_last_error
+    mcp_tools = await load_mcp_tools()
+    print_banner(mcp_tools=mcp_tools, mcp_error=get_last_error())
 
     # 检查 API key
     if not settings.openai_api_key:
@@ -158,7 +172,7 @@ async def chat_loop():
 
         # 斜杠命令:本地处理,不发给Agent
         if user_input.startswith("/"):
-            conversation_history, should_exit = handle_command(user_input, conversation_history)
+            conversation_history, should_exit = handle_command(user_input, conversation_history, mcp_tools)
             if should_exit:
                 break
             continue
@@ -230,6 +244,13 @@ async def chat_loop():
             )
         else:
             console.print("\n[dim](无回复)[/dim]\n")
+
+    # 退出前关闭 MCP 连接（长驻连接，进程结束前显式释放）
+    try:
+        from elpis.mcp import shutdown_mcp
+        await shutdown_mcp()
+    except Exception:
+        pass
 
 
 def main():

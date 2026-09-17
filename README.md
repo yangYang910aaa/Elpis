@@ -147,6 +147,37 @@ LANGCHAIN_PROJECT=elpis
 - 大文件和长输出会自动截断
 - 建议在非重要目录下试用
 
+
+## MCP 扩展（外部工具接入）
+
+通过 MCP（Model Context Protocol）接入第三方服务，让 Agent 获得内建工具之外的能力。
+
+当前已配置：**麦当劳 MCP**（麦乐送点餐、积分兑换、优惠券领取、活动日历查询）。
+
+### 模块结构
+
+```
+elpis/mcp/
+├── __init__.py        # 对外入口 load_mcp_tools()
+├── manager.py         # 连接管理 + MCP 工具 → LangChain 工具适配
+└── servers.yaml       # 服务器清单（Streamable HTTP 传输）
+```
+
+### 接入新 MCP 服务器
+
+1. 在 `elpis/mcp/servers.yaml` 增加一条服务器配置（`id`、`url`、`headers`）
+2. 敏感信息（Token 等）用 `${ENV_VAR}` 占位，实际值填在 `.env`
+3. 重启 Elpis 即可自动加载；`/tools` 命令可查看已加载的外部工具
+
+### 启用麦当劳 MCP
+
+1. 打开 https://open.mcd.cn ，手机号登录后在【控制台】申请 MCP Token
+2. 把 Token 填入 `.env`：`MCD_MCP_TOKEN=你的Token`
+3. 启动 Elpis，横幅会显示「MCP: N 个外部工具已加载」
+
+> 技术说明：使用 Streamable HTTP 传输 + Bearer Token 鉴权；连接进程内长驻复用，
+> 单个服务器失败只降级自身，不影响 Agent 启动。
+
 ## License
 
 MIT

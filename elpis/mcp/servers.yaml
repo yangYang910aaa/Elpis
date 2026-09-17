@@ -1,0 +1,19 @@
+# ============================================================
+# MCP 服务器清单（Streamable HTTP 传输）
+#
+# 每个服务器声明：
+#   id          工具名前缀（tool 名格式: {id}__{tool}）
+#   name        展示名
+#   enabled     是否启用（false 则跳过）
+#   url         Streamable HTTP 端点
+#   headers     HTTP 请求头，支持 ${ENV_VAR} 占位符，
+#               从 .env / 环境变量解析（敏感信息不要写死在 yaml）
+# ============================================================
+servers:
+  - id: mcd
+    name: "麦当劳 MCP"
+    enabled: true
+    url: "https://mcp.mcd.cn/mcp-servers/mcd-mcp"
+    headers:
+      Authorization: "Bearer ${MCD_MCP_TOKEN}"
+    description: "麦当劳官方 MCP：麦乐送点餐、优惠券、积分兑换、活动日历查询"
